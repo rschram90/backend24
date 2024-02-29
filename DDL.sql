@@ -1,5 +1,7 @@
 START TRANSACTION;
 
+Hallo
+
 --
 -- Database: `smarthome`
 --
