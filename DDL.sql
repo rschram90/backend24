@@ -1,12 +1,10 @@
 START TRANSACTION;
 
-Hallo
-
 --
--- Database: `smarthome`
+-- Database: `smarthomebuddie`
 --
-CREATE DATABASE IF NOT EXISTS `smarthome`;
-USE `smarthome`;
+CREATE DATABASE IF NOT EXISTS `smarthomebuddie`;
+USE `smarthomebuddie`;
 
 -- --------------------------------------------------------
 
@@ -42,7 +40,7 @@ CREATE TABLE `paymentmethods` (
 --
 
 CREATE TABLE `users` (
-  `UserId` int(11) NOT NULL AUTO_INCREMENT,
+  `UserNr` int(11) NOT NULL AUTO_INCREMENT,
   `Email` varchar(50) NOT NULL,
   `Password` varchar(50) NOT NULL,
   `FirstName` varchar(255) NOT NULL,
@@ -51,7 +49,7 @@ CREATE TABLE `users` (
   `Phone` varchar(15) NOT NULL,
   `CreatedOn` date NOT NULL,
   `UpdatedOn` date NOT NULL,
-  PRIMARY KEY (`UserId`)
+  PRIMARY KEY (`UserNr`)
 );
 
 -- --------------------------------------------------------
@@ -61,15 +59,15 @@ CREATE TABLE `users` (
 --
 
 CREATE TABLE `carts` (
-  `UserId` int(11) NOT NULL,
+  `UserNr` int(11) NOT NULL,
   `ShipmentMethodId` int(11) NOT NULL,
   `PaymentMethodId` int(11) NOT NULL,
   `TotalPrice` decimal(16,2) NOT NULL,
   `TotalItems` int(11) NOT NULL,
-  PRIMARY KEY (`UserId`),
+  PRIMARY KEY (`UserNr`),
   CONSTRAINT `FK_carts_PaymentMethodId` FOREIGN KEY (`PaymentMethodId`) REFERENCES `paymentmethods` (`PaymentMethodId`) ON UPDATE CASCADE,
   CONSTRAINT `FK_carts_ShipmentMethodId` FOREIGN KEY (`ShipmentMethodId`) REFERENCES `shipmentmethods` (`ShipmentMethodId`) ON UPDATE CASCADE,
-  CONSTRAINT `FK_carts_UserId` FOREIGN KEY (`UserId`) REFERENCES `users` (`UserId`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `FK_carts_UserNr` FOREIGN KEY (`UserNr`) REFERENCES `users` (`UserNr`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- --------------------------------------------------------
@@ -79,8 +77,8 @@ CREATE TABLE `carts` (
 --
 
 CREATE TABLE `orders` (
-  `OrderId` int(11) NOT NULL AUTO_INCREMENT,
-  `UserId` int(11) NOT NULL,
+  `OrderNr` int(11) NOT NULL AUTO_INCREMENT,
+  `UserNr` int(11) NOT NULL,
   `ShipmentMethodId` int(11) NOT NULL,
   `PaymentMethodId` int(11) NOT NULL,
   `ShippingCost` decimal(16,2) NOT NULL,
@@ -91,10 +89,10 @@ CREATE TABLE `orders` (
   `ZipCode` varchar(6) NOT NULL,
   `HouseNo` int(11) NOT NULL,
   `HouseNo_ext` varchar(11) NOT NULL,
-  PRIMARY KEY (`OrderId`),
+  PRIMARY KEY (`OrderNr`),
   CONSTRAINT `FK_orders_PaymentMethodId` FOREIGN KEY (`PaymentMethodId`) REFERENCES `paymentmethods` (`PaymentMethodId`) ON UPDATE CASCADE,
   CONSTRAINT `FK_orders_ShipmentMethodId` FOREIGN KEY (`ShipmentMethodId`) REFERENCES `shipmentmethods` (`ShipmentMethodId`) ON UPDATE CASCADE,
-  CONSTRAINT `FK_orders_UserId` FOREIGN KEY (`UserId`) REFERENCES `users` (`UserId`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `FK_orders_UserNr` FOREIGN KEY (`UserNr`) REFERENCES `users` (`UserNr`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- --------------------------------------------------------
@@ -104,13 +102,13 @@ CREATE TABLE `orders` (
 --
 
 CREATE TABLE `address_order` (
-  `OrderId` int(11) NOT NULL,
+  `OrderNr` int(11) NOT NULL,
   `ZipCode` varchar(6)  NOT NULL,
   `HouseNo` int(11) NOT NULL,
   `AddressType` tinyint(1) NOT NULL,
   `HouseNo_ext` varchar(255)  NOT NULL,
-  PRIMARY KEY (`OrderId`,`AddressType`),
-  CONSTRAINT `FK_address_order_OrderId` FOREIGN KEY (`OrderId`) REFERENCES `orders` (`OrderId`)
+  PRIMARY KEY (`OrderNr`,`AddressType`),
+  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`)
 );
 
 -- --------------------------------------------------------
@@ -120,7 +118,7 @@ CREATE TABLE `address_order` (
 --
 
 CREATE TABLE `adresses` (
-  `UserId` int(11) NOT NULL,
+  `UserNr` int(11) NOT NULL,
   `IsDefaultAddress` tinyint(1) NOT NULL,
   `Address` varchar(50) NOT NULL,
   `Address_2` varchar(50) NOT NULL,
@@ -129,7 +127,7 @@ CREATE TABLE `adresses` (
   `ZipCode` varchar(6) NOT NULL,
   `Country` varchar(2) NOT NULL,
   PRIMARY KEY (`Country`,`ZipCode`,`HouseNo`,`HouseNo_ext`),
-  CONSTRAINT `FK_addresses_UserId` FOREIGN KEY (`UserId`) REFERENCES `users` (`UserId`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `FK_addresses_UserNr` FOREIGN KEY (`UserNr`) REFERENCES `users` (`UserNr`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- --------------------------------------------------------
@@ -323,7 +321,7 @@ CREATE USER 'application_manager'@'%' IDENTIFIED BY 'adminpassword';
 GRANT ALL ON smarthomebuddie.* TO 'application_manager'@'%' WITH GRANT OPTION;
 
 CREATE USER 'application_user'@'%' IDENTIFIED BY 'appuserpassword';
-GRANT SELECT ON smarthomebuddie.* TO 'application_manager'@'%';
+GRANT SELECT ON smarthomebuddie.* TO 'application_user'@'%';
 
 CREATE USER 'user_manager'@'%' IDENTIFIED BY 'usermngrpassword';
 GRANT SELECT, INSERT, UPDATE ON smarthomebuddie.users TO 'user_manager'@'%';
@@ -346,181 +344,3 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON smarthomebuddie.categories TO 'products_
 FLUSH PRIVILEGES;
 
 COMMIT;
-
--- --------------------------------------------------------
-
---
--- Create triggers for smarthomebuddie
---
-
-DELIMITER $$ 
-CREATE OR REPLACE TRIGGER OnInsertCartProduct_UpdateCartTotal
-AFTER
-INSERT ON cart_products FOR EACH ROW BEGIN
-
-DECLARE totalPrice decimal(16, 2);
-DECLARE totalItems int(11);
-
-SELECT 
-    SUM(price),
-    SUM(Quantity) 
-INTO 
-    totalPrice,
-    totalItems
-FROM cart_products
-WHERE UserNr = NEW.UserNr;
-UPDATE carts
-SET TotalPrice = totalPrice,
-    TotalItems = totalItems;
-END $$ 
-DELIMITER ;
-----------------------------------------------------------------------
-DELIMITER $$ 
-CREATE OR REPLACE TRIGGER OnUpdateCartProduct_UpdateCartTotal
-AFTER
-UPDATE ON cart_products FOR EACH ROW BEGIN
-
-DECLARE totalPrice decimal(16, 2);
-DECLARE totalItems int(11);
-
-SELECT 
-    SUM(price * Quantity),
-    SUM(Quantity) 
-INTO 
-    totalPrice,
-    totalItems
-FROM cart_products
-WHERE UserNr = NEW.UserNr;
-UPDATE carts
-SET TotalPrice = totalPrice,
-    TotalItems = totalItems;
-END $$ 
-DELIMITER ;
-----------------------------------------------------------------------
-DELIMITER $$ 
-CREATE OR REPLACE TRIGGER OnDeleteCartProduct_UpdateCartTotal
-AFTER DELETE ON cart_products FOR EACH ROW BEGIN
-
-DECLARE totalPrice decimal(16, 2);
-DECLARE totalItems int(11);
-
-SELECT 
-    SUM(price * Quantity),
-    SUM(Quantity) 
-INTO 
-    totalPrice,
-    totalItems
-FROM cart_products
-WHERE UserNr = OLD.UserNr;
-
-IF totalItems = 0 THEN
-DELETE FROM carts
-WHERE UserNr = OLD.UserNr;
-
-ELSE
-UPDATE carts
-SET TotalPrice = totalPrice,
-    TotalItems = totalItems
-WHERE UserNr = OLD.UserNr;
-END IF;
-END$$ 
-DELIMITER ;
-----------------------------------------------------------------------
-DELIMITER $$
-CREATE OR REPLACE TRIGGER OnInsertOrderProduct_CheckStock
-BEFORE
-INSERT ON order_products FOR EACH ROW BEGIN
-
-DECLARE msg varchar(255);
-
-IF (
-    SELECT Stock
-    FROM products
-    WHERE ProductCode = NEW.ProductCode
-) < NEW.Quantity THEN
-
-SELECT CONCAT(
-        'Error: There is not enough stock for product with code: ',
-        NEW.ProductCode
-    ) INTO msg;
-SIGNAL SQLSTATE '45000'
-SET MESSAGE_TEXT = msg;
-END IF;
-END$$ 
-DELIMITER ;
-----------------------------------------------------------------------
-DELIMITER $$
-CREATE OR REPLACE TRIGGER OnInsertOrderProduct_UpdateStock
-AFTER
-INSERT ON order_products FOR EACH ROW 
-
-BEGIN
-UPDATE products 
-SET Stock = STOCK - NEW.Quantity 
-WHERE ProductCode = NEW.ProductCode;
-END$$
-DELIMITER ;
-
--- --------------------------------------------------------
-
---
--- Create stored functions for smarthomebuddie
---
-
-DELIMITER $$
-CREATE OR REPLACE FUNCTION CreateOrderFromCart(par_UserNr INT) RETURNS INT 
-
-BEGIN
-    DECLARE created_order_id int;
-    DECLARE msg varchar(255);
-
-    IF (SELECT COUNT(*) FROM carts WHERE UserNr = par_UserNr) = 0 THEN
-    SET msg = 'Cart not found';
-    SIGNAL SQLSTATE '45000'
-    SET MESSAGE_TEXT =  msg;
-    ELSE
-
-    INSERT INTO orders (
-        UserNr, 
-        ShipmentMethodId, 
-        PaymentMethodId, 
-        ShippingCost, 
-        SubTotal, 
-        Total, 
-        CreatedOn)
-    SELECT 
-        UserNr, 
-        shipmentmethods.ShipmentMethodId, 
-        PaymentMethodId, 
-        ShippingCost,  
-        TotalPrice, 
-        TotalPrice + ShippingCost, 
-        NOW()
-    FROM carts
-    INNER JOIN shipmentmethods 
-        ON carts.ShipmentMethodId = shipmentmethods.ShipmentMethodId
-    WHERE UserNr = par_UserNr;
-
-    SELECT LAST_INSERT_ID() 
-    FROM orders 
-    INTO created_order_id;
-
-    INSERT INTO order_products
-    SELECT 
-        created_order_id, 
-        cart_products.ProductCode, 
-        cart_products.Quantity, 
-        cart_products.Price
-    FROM cart_products 
-    WHERE UserNr = par_UserNr;
-
-    DELETE 
-    FROM carts 
-    WHERE UserNr = par_UserNr;
-
-    RETURN created_order_id;
-
-    END IF;
-
-END$$
-DELIMITER ;
