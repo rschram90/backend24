@@ -274,10 +274,10 @@ CREATE TABLE `wizardansweroptions` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `userwizardhistorys`
+-- Table structure for table `userwizardhistory`
 --
 
-CREATE TABLE `userwizardhistorys` (
+CREATE TABLE `userwizardhistory` (
   `WizardQuestionId` int(11) NOT NULL,
   `WizardAnswerOptionId` int(11) NOT NULL,
   `UserId` int(11) NOT NULL,
@@ -301,11 +301,11 @@ INNER JOIN categories ON products.CategoryId = categories.CategoryId
 INNER JOIN orders ON order_products.OrderNr = orders.OrderNr;
 
 CREATE VIEW QuestionOverview AS
-SELECT userwizardhistorys.UserId, wizardquestions.Question, wizardansweroptions.WizardAnswerOption
-FROM userwizardhistorys
-INNER JOIN wizardquestions ON userwizardhistorys.WizardQuestionId = wizardquestions.QuestionId
-INNER JOIN wizardansweroptions ON userwizardhistorys.WizardAnswerOptionId = wizardansweroptions.WizardAnswerOptionId
-ORDER BY userwizardhistorys.UserId, userwizardhistorys.WizardQuestionId DESC;
+SELECT userwizardhistory.UserId, wizardquestions.Question, wizardansweroptions.WizardAnswerOption
+FROM userwizardhistory
+INNER JOIN wizardquestions ON userwizardhistory.WizardQuestionId = wizardquestions.QuestionId
+INNER JOIN wizardansweroptions ON userwizardhistory.WizardAnswerOptionId = wizardansweroptions.WizardAnswerOptionId
+ORDER BY userwizardhistory.UserId, userwizardhistory.WizardQuestionId DESC;
 
 -- --------------------------------------------------------
 
@@ -344,3 +344,142 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON smarthomebuddie.categories TO 'products_
 FLUSH PRIVILEGES;
 
 COMMIT;
+
+-- --------------------------------------------------------
+
+--
+-- Create triggers for smarthomebuddie
+--
+
+DELIMITER $$ 
+CREATE OR REPLACE TRIGGER OnInsertCartProduct_UpdateCartTotal
+AFTER
+INSERT ON cart_products FOR EACH ROW BEGIN
+
+DECLARE totalPrice decimal(16, 2);
+DECLARE totalItems int(11);
+
+SELECT 
+    SUM(price),
+    SUM(Quantity) 
+INTO 
+    totalPrice,
+    totalItems
+FROM cart_products
+WHERE UserNr = NEW.UserNr;
+UPDATE carts
+SET TotalPrice = totalPrice,
+    TotalItems = totalItems;
+END $$ 
+DELIMITER ;
+----------------------------------------------------------------------
+DELIMITER //
+
+CREATE TRIGGER Max_10_percent_price_update 
+BEFORE UPDATE ON order_products 
+FOR EACH ROW 
+BEGIN
+    DECLARE old_price DECIMAL(10,2);
+    DECLARE new_price DECIMAL(10,2);
+    DECLARE price_difference DECIMAL(10,2);
+    
+    -- Haal de oude en nieuwe prijzen op
+    SET old_price = OLD.Price;
+    SET new_price = NEW.Price;
+    
+    -- Bereken het prijsverschil in percentage
+    SET price_difference = ABS((new_price - old_price) / old_price) * 100;
+    
+    -- Controleer of het prijsverschil meer dan 10% bedraagt
+    IF (price_difference > 10) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Het prijsverschil is te groot';
+    END IF;
+END //
+DELIMITER ;
+----------------------------------------------------------------------
+DELIMITER $$ 
+CREATE OR REPLACE TRIGGER OnUpdateCartProduct_UpdateCartTotal
+AFTER
+UPDATE ON cart_products FOR EACH ROW BEGIN
+
+DECLARE totalPrice decimal(16, 2);
+DECLARE totalItems int(11);
+
+SELECT 
+    SUM(price * Quantity),
+    SUM(Quantity) 
+INTO 
+    totalPrice,
+    totalItems
+FROM cart_products
+WHERE UserNr = NEW.UserNr;
+UPDATE carts
+SET TotalPrice = totalPrice,
+    TotalItems = totalItems;
+END $$ 
+DELIMITER ;
+----------------------------------------------------------------------
+DELIMITER $$ 
+CREATE OR REPLACE TRIGGER OnDeleteCartProduct_UpdateCartTotal
+AFTER DELETE ON cart_products FOR EACH ROW BEGIN
+
+DECLARE totalPrice decimal(16, 2);
+DECLARE totalItems int(11);
+
+SELECT 
+    SUM(price * Quantity),
+    SUM(Quantity) 
+INTO 
+    totalPrice,
+    totalItems
+FROM cart_products
+WHERE UserNr = OLD.UserNr;
+
+IF totalItems = 0 THEN
+DELETE FROM carts
+WHERE UserNr = OLD.UserNr;
+
+ELSE
+UPDATE carts
+SET TotalPrice = totalPrice,
+    TotalItems = totalItems
+WHERE UserNr = OLD.UserNr;
+END IF;
+END$$ 
+DELIMITER ;
+----------------------------------------------------------------------
+DELIMITER $$
+CREATE OR REPLACE TRIGGER OnInsertOrderProduct_CheckStock
+BEFORE
+INSERT ON order_products FOR EACH ROW BEGIN
+
+DECLARE msg varchar(255);
+
+IF (
+    SELECT Stock
+    FROM products
+    WHERE ProductCode = NEW.ProductCode
+) < NEW.Quantity THEN
+
+SELECT CONCAT(
+        'Error: There is not enough stock for product with code: ',
+        NEW.ProductCode
+    ) INTO msg;
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = msg;
+END IF;
+END$$ 
+DELIMITER ;
+----------------------------------------------------------------------
+DELIMITER $$
+CREATE OR REPLACE TRIGGER OnInsertOrderProduct_UpdateStock
+AFTER
+INSERT ON order_products FOR EACH ROW 
+
+BEGIN
+UPDATE products 
+SET Stock = STOCK - NEW.Quantity 
+WHERE ProductCode = NEW.ProductCode;
+END$$
+DELIMITER ;
+
