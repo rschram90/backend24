@@ -107,8 +107,9 @@ CREATE TABLE `address_order` (
   `HouseNo` int(11) NOT NULL,
   `AddressType` tinyint(1) NOT NULL,
   `HouseNo_ext` varchar(255)  NOT NULL,
-  PRIMARY KEY (`OrderNr`,`AddressType`),
-  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`)
+  PRIMARY KEY (`OrderNr`, `ZipCode`),
+  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`),
+  CONSTRAINT `FK_address_order_ZipCode` FOREIGN KEY (`ZipCode`) REFERENCES `Adresses` (`ZipCode`)
 );
 
 -- --------------------------------------------------------
@@ -126,7 +127,7 @@ CREATE TABLE `adresses` (
   `HouseNo_ext` varchar(255) NOT NULL,
   `ZipCode` varchar(6) NOT NULL,
   `Country` varchar(2) NOT NULL,
-  PRIMARY KEY (`Country`,`ZipCode`,`HouseNo`,`HouseNo_ext`),
+  PRIMARY KEY (`ZipCode`),
   CONSTRAINT `FK_addresses_UserNr` FOREIGN KEY (`UserNr`) REFERENCES `users` (`UserNr`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -207,7 +208,8 @@ CREATE TABLE `products` (
   `UpdatedBy` int(11) NOT NULL,
   PRIMARY KEY (`ProductCode`),
   CONSTRAINT `FK_products_CategoryId` FOREIGN KEY (`CategoryId`) REFERENCES `categories` (`CategoryId`) ON UPDATE CASCADE,
-  CONSTRAINT `FK_products_UpdatedBy` FOREIGN KEY (`UpdatedBy`) REFERENCES `employees` (`EmployeeNr`) ON DELETE NO ACTION ON UPDATE CASCADE
+  CONSTRAINT `FK_products_UpdatedBy` FOREIGN KEY (`UpdatedBy`) REFERENCES `employees` (`EmployeeNr`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `FK_products_CreatedBy` FOREIGN KEY (`Createdby`) REFERENCES `employees` (`EmployeeNr`) ON DELETE NO ACTION ON UPDATE CASCADE
 );
 
 -- --------------------------------------------------------
