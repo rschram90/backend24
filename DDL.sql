@@ -108,8 +108,8 @@ CREATE TABLE `address_order` (
   `AddressType` tinyint(1) NOT NULL,
   `HouseNo_ext` varchar(255)  NOT NULL,
   PRIMARY KEY (`OrderNr`, `ZipCode`),
-  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`),
-  CONSTRAINT `FK_address_order_ZipCode` FOREIGN KEY (`ZipCode`) REFERENCES `Adresses` (`ZipCode`)
+  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK_adress_order_ZipCode` FOREIGN KEY (`ZipCode`) REFERENCES `adresses` (`ZipCode`) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- --------------------------------------------------------
