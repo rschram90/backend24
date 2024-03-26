@@ -98,23 +98,6 @@ CREATE TABLE `orders` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `address_order`
---
-
-CREATE TABLE `address_order` (
-  `OrderNr` int(11) NOT NULL,
-  `ZipCode` varchar(6)  NOT NULL,
-  `HouseNo` int(11) NOT NULL,
-  `AddressType` tinyint(1) NOT NULL,
-  `HouseNo_ext` varchar(255)  NOT NULL,
-  PRIMARY KEY (`OrderNr`, `ZipCode`),
-  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `FK_address_order_ZipCode` FOREIGN KEY (`ZipCode`) REFERENCES `adresses` (`ZipCode`) ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `adresses`
 --
 
@@ -130,6 +113,24 @@ CREATE TABLE `adresses` (
   PRIMARY KEY (`ZipCode`),
   CONSTRAINT `FK_addresses_UserNr` FOREIGN KEY (`UserNr`) REFERENCES `users` (`UserNr`) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `address_order`
+--
+
+CREATE TABLE `address_order` (
+  `OrderNr` int(11) NOT NULL,
+  `ZipCode` varchar(6)  NOT NULL,
+  `HouseNo` int(11) NOT NULL,
+  `AddressType` tinyint(1) NOT NULL,
+  `HouseNo_ext` varchar(255)  NOT NULL,
+  PRIMARY KEY (`OrderNr`, `ZipCode`),
+  CONSTRAINT `FK_address_order_OrderNr` FOREIGN KEY (`OrderNr`) REFERENCES `orders` (`OrderNr`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK_address_order_ZipCode` FOREIGN KEY (`ZipCode`) REFERENCES `adresses` (`ZipCode`) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 
 -- --------------------------------------------------------
 
