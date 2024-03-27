@@ -1,6 +1,14 @@
 -- --------------------------------------------------------
 
 --
+-- Use smarthomebuddie as database
+--
+
+USE `smarthomebuddie`;
+
+-- --------------------------------------------------------
+
+--
 -- Create views for smarthomebuddie
 --
 
